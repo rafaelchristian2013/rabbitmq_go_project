@@ -1,0 +1,33 @@
+version: '3.3'
+
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.0.5-management-alpine
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=g79LK1aeHn8
+    networks:
+      - application_network
+
+  mysql:
+    container_name: mysql
+    image: mysql:9.2.0
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=80NZYF1OgH
+      - MYSQL_DATABASE=app
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=SAjfdbas54
+    networks:
+      - application_network
+
+networks:
+  application_network:
+    driver: bridge
