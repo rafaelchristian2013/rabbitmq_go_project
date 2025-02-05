@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../../internal/send"
+	"rabbitmq_go_project/internal/send"
 )
 
 func main() {

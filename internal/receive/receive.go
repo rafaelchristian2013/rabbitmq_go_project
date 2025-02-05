@@ -1,11 +1,11 @@
 package receive
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 
-	_ "github.com/go-sql-driver/mysql"
+	"rabbitmq_go_project/pkg/db"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -20,8 +20,8 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func Run() {
-	conn, err := amqp.Dial("amqp://admin:g79LK1aeHn8@localhost:5672/")
+func Run(rabbitMQURL, queueName, dbUser, dbPassword, dbHost string, dbPort int, dbName string) {
+	conn, err := amqp.Dial(rabbitMQURL)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -30,18 +30,14 @@ func Run() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"payment_events", // name
-		false,            // durable
-		false,            // delete when unused
-		false,            // exclusive
-		false,            // no-wait
-		nil,              // arguments
+		queueName, // name
+		false,     // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
-
-	db, err := sql.Open("mysql", "app:apppassword@tcp(localhost:3306)/app")
-	failOnError(err, "Failed to connect to MySQL")
-	defer db.Close()
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -54,16 +50,30 @@ func Run() {
 	)
 	failOnError(err, "Failed to register a consumer")
 
-	forever := make(chan bool)
+	dbConfig := db.Config{
+		User:     dbUser,
+		Password: dbPassword,
+		Host:     dbHost,
+		Port:     dbPort,
+		DBName:   dbName,
+	}
+	dbConn := db.MustNewDB(dbConfig)
+	defer dbConn.Close()
+
+	var forever chan struct{}
 
 	go func() {
 		for d := range msgs {
 			var event PaymentEvent
 			err := json.Unmarshal(d.Body, &event)
-			failOnError(err, "Failed to unmarshal JSON")
-
-			_, err = db.Exec("INSERT INTO payment_events (user_id, deposit_amount) VALUES (?, ?)", event.UserID, event.DepositAmount)
-			failOnError(err, "Failed to insert into payment_events table")
+			if err != nil {
+				log.Printf("Error decoding JSON: %s", err)
+				continue
+			}
+			err = db.InsertPaymentEvent(dbConn, event.UserID, event.DepositAmount)
+			if err != nil {
+				log.Printf("Error inserting payment event: %s", err)
+			}
 		}
 	}()
 

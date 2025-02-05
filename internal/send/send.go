@@ -1,11 +1,11 @@
 package send
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"log"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -15,7 +15,7 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func publishPayloads(ch *amqp.Channel, q amqp.Queue, db *sql.DB) {
+func publishPayloads(ch *amqp.Channel, q amqp.Queue) {
 	payloads := []struct {
 		UserID        int `json:"user_id"`
 		DepositAmount int `json:"deposit_amount"`
@@ -30,10 +30,13 @@ func publishPayloads(ch *amqp.Channel, q amqp.Queue, db *sql.DB) {
 			UserID        int `json:"user_id"`
 			DepositAmount int `json:"deposit_amount"`
 		}) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
 			body, err := json.Marshal(payload)
 			failOnError(err, "Failed to marshal payload")
 
-			err = ch.Publish(
+			err = ch.PublishWithContext(ctx,
 				"",     // exchange
 				q.Name, // routing key
 				false,  // mandatory
@@ -43,14 +46,13 @@ func publishPayloads(ch *amqp.Channel, q amqp.Queue, db *sql.DB) {
 					Body:        body,
 				})
 			failOnError(err, "Failed to publish a message")
-
-			_, err = db.Exec("INSERT INTO payment_events (user_id, deposit_amount) VALUES (?, ?)", payload.UserID, payload.DepositAmount)
-			failOnError(err, "Failed to insert into payment_events table")
+			log.Printf(" [x] Sent %s\n", body)
 		}(payload)
 	}
 }
 
 func Run() {
+	// ToDo: Create a credentials file and read the credentials from it
 	conn, err := amqp.Dial("amqp://admin:g79LK1aeHn8@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
@@ -60,7 +62,7 @@ func Run() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"payment_events", // name
+		"payment_events", // name (changed from "hello" to "payment_events")
 		false,            // durable
 		false,            // delete when unused
 		false,            // exclusive
@@ -69,9 +71,8 @@ func Run() {
 	)
 	failOnError(err, "Failed to declare a queue")
 
-	db, err := sql.Open("mysql", "app:apppassword@tcp(localhost:3306)/app")
-	failOnError(err, "Failed to connect to MySQL")
-	defer db.Close()
+	publishPayloads(ch, q)
 
-	publishPayloads(ch, q, db)
+	// Wait for a while to ensure all go routines finish
+	time.Sleep(10 * time.Second)
 }
