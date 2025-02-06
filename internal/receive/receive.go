@@ -20,7 +20,7 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func Run(rabbitMQURL, queueName, dbUser, dbPassword, dbHost string, dbPort int, dbName string) {
+func Run(rabbitMQURL string, queueName string, dbUser string, dbPassword string, dbHost string, dbPort int, dbName string) {
 	conn, err := amqp.Dial(rabbitMQURL)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()

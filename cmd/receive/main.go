@@ -1,18 +1,33 @@
 package main
 
 import (
+	"log"
+	"os"
 	"rabbitmq_go_project/internal/receive"
+	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	rabbitMQURL := "amqp://admin:g79LK1aeHn8@localhost:5672/"
-	queueName := "payment_events"
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-	dbUser := "app"
-	dbPassword := "SAjfdbas54"
-	dbHost := "localhost"
-	dbPort := 3306
-	dbName := "app"
+	rabbitMQURL := os.Getenv("RABBITMQ_URL")
+	queueName := os.Getenv("QUEUE_NAME")
+
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPortStr := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	dbPort, err := strconv.Atoi(dbPortStr)
+	if err != nil {
+		log.Fatal("Invalid port number")
+	}
 
 	receive.Run(rabbitMQURL, queueName, dbUser, dbPassword, dbHost, dbPort, dbName)
 }

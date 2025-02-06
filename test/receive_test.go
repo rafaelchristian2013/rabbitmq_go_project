@@ -11,7 +11,6 @@ import (
 
 	"rabbitmq_go_project/internal/receive"
 
-	// Ensure this import is present
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
@@ -69,12 +68,12 @@ func TestReceiveAndWriteToDB(t *testing.T) {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"payment_events", // name
-		false,            // durable
-		false,            // delete when unused
-		false,            // exclusive
-		false,            // no-wait
-		nil,              // arguments
+		"payment_events",
+		false,
+		false,
+		false,
+		false,
+		nil,
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -115,10 +114,10 @@ func TestReceiveAndWriteToDB(t *testing.T) {
 		failOnError(err, "Failed to marshal payload")
 
 		err = ch.Publish(
-			"",     // exchange
-			q.Name, // routing key
-			false,  // mandatory
-			false,  // immediate
+			"",
+			q.Name,
+			false,
+			false,
 			amqp.Publishing{
 				ContentType: "application/json",
 				Body:        body,
@@ -127,7 +126,7 @@ func TestReceiveAndWriteToDB(t *testing.T) {
 	}
 
 	// Give the receiver some time to process the messages
-	time.Sleep(10 * time.Second) // Increased from 5 to 10 seconds
+	time.Sleep(10 * time.Second)
 
 	// Check if the payloads were written to the database
 	rows, err := db.Query("SELECT user_id, deposit_amount FROM payment_events")
@@ -163,10 +162,9 @@ func startMySQLContainer(ctx context.Context) (testcontainers.Container, error) 
 		Image:        "mysql:8.0",
 		ExposedPorts: []string{"3306/tcp"},
 		Env: map[string]string{
-			"MYSQL_ROOT_PASSWORD": "rootpassword",
-			"MYSQL_DATABASE":      "app_test",
-			"MYSQL_USER":          "app",
-			"MYSQL_PASSWORD":      "apppassword",
+			"MYSQL_DATABASE": "app_test",
+			"MYSQL_USER":     "app",
+			"MYSQL_PASSWORD": "apppassword",
 		},
 		WaitingFor: wait.ForAll(
 			wait.ForLog("port: 3306  MySQL Community Server - GPL"),
@@ -181,7 +179,7 @@ func startMySQLContainer(ctx context.Context) (testcontainers.Container, error) 
 
 func runMigrations(mysqlHost, mysqlPort string) error {
 	log.Println("Running migrations...")
-	migrationPath := "file://D:/Trems/rabbitmq_go_project/db/migrations" // Use absolute path
+	migrationPath := "file://../db/migrations" // Use absolute path
 	m, err := migrate.New(
 		migrationPath,
 		fmt.Sprintf("mysql://app:apppassword@tcp(%s:%s)/app_test", mysqlHost, mysqlPort),

@@ -51,9 +51,8 @@ func publishPayloads(ch *amqp.Channel, q amqp.Queue) {
 	}
 }
 
-func Run() {
-	// ToDo: Create a credentials file and read the credentials from it
-	conn, err := amqp.Dial("amqp://admin:g79LK1aeHn8@localhost:5672/")
+func Run(rabbitMQURL, queueName string) {
+	conn, err := amqp.Dial(rabbitMQURL)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -62,12 +61,12 @@ func Run() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"payment_events", // name (changed from "hello" to "payment_events")
-		false,            // durable
-		false,            // delete when unused
-		false,            // exclusive
-		false,            // no-wait
-		nil,              // arguments
+		queueName, // name
+		false,     // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
