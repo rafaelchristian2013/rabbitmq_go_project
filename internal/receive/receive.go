@@ -5,14 +5,10 @@ import (
 	"log"
 
 	"rabbitmq_go_project/pkg/db"
+	"rabbitmq_go_project/pkg/models"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type PaymentEvent struct {
-	UserID        int     `json:"user_id"`
-	DepositAmount float64 `json:"deposit_amount"`
-}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -57,14 +53,15 @@ func Run(rabbitMQURL string, queueName string, dbUser string, dbPassword string,
 		Port:     dbPort,
 		DBName:   dbName,
 	}
-	dbConn := db.MustNewDB(dbConfig)
+	dbConn, err := db.OpenDBConnection(dbConfig)
+	failOnError(err, "Failed to connect to database")
 	defer dbConn.Close()
 
 	var forever chan struct{}
 
 	go func() {
 		for d := range msgs {
-			var event PaymentEvent
+			var event models.PaymentEvent
 			err := json.Unmarshal(d.Body, &event)
 			if err != nil {
 				log.Printf("Error decoding JSON: %s", err)

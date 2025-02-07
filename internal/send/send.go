@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"rabbitmq_go_project/pkg/models"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -16,20 +17,14 @@ func failOnError(err error, msg string) {
 }
 
 func publishPayloads(ch *amqp.Channel, q amqp.Queue) {
-	payloads := []struct {
-		UserID        int `json:"user_id"`
-		DepositAmount int `json:"deposit_amount"`
-	}{
-		{1, 10},
-		{1, 20},
-		{2, 20},
+	payloads := []models.PaymentEvent{
+		{UserID: 1, DepositAmount: 10},
+		{UserID: 1, DepositAmount: 20},
+		{UserID: 2, DepositAmount: 20},
 	}
 
 	for _, payload := range payloads {
-		go func(payload struct {
-			UserID        int `json:"user_id"`
-			DepositAmount int `json:"deposit_amount"`
-		}) {
+		go func(payload models.PaymentEvent) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 

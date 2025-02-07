@@ -17,8 +17,8 @@ type Config struct {
 	DBName   string
 }
 
-// NewDB initializes and returns a new database connection
-func NewDB(cfg Config) (*sql.DB, error) {
+// OpenDBConnection initializes and returns a new database connection
+func OpenDBConnection(cfg Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
 	db, err := sql.Open("mysql", dsn)
@@ -33,15 +33,6 @@ func NewDB(cfg Config) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-// MustNewDB initializes a new database connection and panics if there's an error
-func MustNewDB(cfg Config) *sql.DB {
-	db, err := NewDB(cfg)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	return db
 }
 
 func InsertPaymentEvent(db *sql.DB, userID int, depositAmount float64) error {
